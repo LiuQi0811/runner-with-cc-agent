@@ -117,6 +117,9 @@ export function isAnthropicAuthEnabled(): boolean {
     isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX) ||
     isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
 
+  // Check if using custom base URL (e.g., Zhipu API)
+  const hasCustomBaseUrl = !!process.env.ANTHROPIC_BASE_URL
+
   // Check if user has configured an external API key source
   // This allows externally-provided API keys to work (without requiring proxy configuration)
   const settings = getSettings_DEPRECATED() || {}
@@ -137,13 +140,15 @@ export function isAnthropicAuthEnabled(): boolean {
   // 1. Using 3rd party services (Bedrock/Vertex/Foundry)
   // 2. User has an external API key (regardless of proxy configuration)
   // 3. User has an external auth token (regardless of proxy configuration)
+  // 4. User has a custom base URL (e.g., Zhipu API)
   // this may cause issues if users have complex proxy / gateway "client-side creds" auth scenarios,
   // e.g. if they want to set X-Api-Key to a gateway key but use Anthropic OAuth for the Authorization
   // if we get reports of that, we should probably add an env var to force OAuth enablement
   const shouldDisableAuth =
     is3P ||
     (hasExternalAuthToken && !isManagedOAuthContext()) ||
-    (hasExternalApiKey && !isManagedOAuthContext())
+    (hasExternalApiKey && !isManagedOAuthContext()) ||
+    hasCustomBaseUrl
 
   return !shouldDisableAuth
 }
@@ -249,7 +254,9 @@ export function getAnthropicApiKeyWithSource(
 
   // On homespace, don't use ANTHROPIC_API_KEY (use Console key instead)
   // https://anthropic.slack.com/archives/C08428WSLKV/p1747331773214779
-  const apiKeyEnv = isRunningOnHomespace()
+  // Except when using custom base URL (e.g., Zhipu API)
+  const hasCustomBaseUrl = !!process.env.ANTHROPIC_BASE_URL
+  const apiKeyEnv = (isRunningOnHomespace() && !hasCustomBaseUrl)
     ? undefined
     : process.env.ANTHROPIC_API_KEY
 
@@ -296,15 +303,16 @@ export function getAnthropicApiKeyWithSource(
     }
   }
   // Check for ANTHROPIC_API_KEY before checking the apiKeyHelper or /login-managed key
-  if (
-    apiKeyEnv &&
-    getGlobalConfig().customApiKeyResponses?.approved?.includes(
+  if (apiKeyEnv) {
+    // Skip approval check if using custom base URL (e.g., Zhipu API)
+    const hasCustomBaseUrl = !!process.env.ANTHROPIC_BASE_URL;
+    if (hasCustomBaseUrl || getGlobalConfig().customApiKeyResponses?.approved?.includes(
       normalizeApiKeyForConfig(apiKeyEnv),
-    )
-  ) {
-    return {
-      key: apiKeyEnv,
-      source: 'ANTHROPIC_API_KEY',
+    )) {
+      return {
+        key: apiKeyEnv,
+        source: 'ANTHROPIC_API_KEY',
+      }
     }
   }
 

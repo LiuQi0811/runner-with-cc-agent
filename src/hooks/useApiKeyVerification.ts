@@ -60,6 +60,13 @@ export function useApiKeyVerification(): ApiKeyVerificationResult {
       return
     }
 
+    // Skip API key verification for custom base URLs (e.g., Zhipu API)
+    // since we can't verify against Anthropic's API endpoint
+    if (process.env.ANTHROPIC_BASE_URL) {
+      setStatus('valid')
+      return
+    }
+
     try {
       const isValid = await verifyApiKey(apiKey, false)
       const newStatus = isValid ? 'valid' : 'invalid'

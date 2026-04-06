@@ -46,6 +46,12 @@ export async function validateModel(
     return { valid: true }
   }
 
+  // Skip model validation for custom base URLs (e.g., Zhipu API)
+  // since we can't validate against Anthropic's API endpoint
+  if (process.env.ANTHROPIC_BASE_URL) {
+    return { valid: true }
+  }
+
   // Check cache first
   if (validModelCache.has(normalizedModel)) {
     return { valid: true }

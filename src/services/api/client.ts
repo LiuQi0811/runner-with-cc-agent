@@ -155,7 +155,7 @@ export async function getAnthropicClient({
     // Use region override for small fast model if specified
     const awsRegion =
       model === getSmallFastModel() &&
-      process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
+        process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         ? process.env.ANTHROPIC_SMALL_FAST_MODEL_AWS_REGION
         : getAWSRegion()
 
@@ -265,27 +265,27 @@ export async function getAnthropicClient({
 
     const googleAuth = isEnvTruthy(process.env.CLAUDE_CODE_SKIP_VERTEX_AUTH)
       ? ({
-          // Mock GoogleAuth for testing/proxy scenarios
-          getClient: () => ({
-            getRequestHeaders: () => ({}),
-          }),
-        } as unknown as GoogleAuth)
+        // Mock GoogleAuth for testing/proxy scenarios
+        getClient: () => ({
+          getRequestHeaders: () => ({}),
+        }),
+      } as unknown as GoogleAuth)
       : new GoogleAuth({
-          scopes: ['https://www.googleapis.com/auth/cloud-platform'],
-          // Only use ANTHROPIC_VERTEX_PROJECT_ID as last resort fallback
-          // This prevents the 12-second metadata server timeout when:
-          // - No project env vars are set AND
-          // - No credential keyfile is specified AND
-          // - ADC file exists but lacks project_id field
-          //
-          // Risk: If auth project != API target project, this could cause billing/audit issues
-          // Mitigation: Users can set GOOGLE_CLOUD_PROJECT to override
-          ...(hasProjectEnvVar || hasKeyFile
-            ? {}
-            : {
-                projectId: process.env.ANTHROPIC_VERTEX_PROJECT_ID,
-              }),
-        })
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+        // Only use ANTHROPIC_VERTEX_PROJECT_ID as last resort fallback
+        // This prevents the 12-second metadata server timeout when:
+        // - No project env vars are set AND
+        // - No credential keyfile is specified AND
+        // - ADC file exists but lacks project_id field
+        //
+        // Risk: If auth project != API target project, this could cause billing/audit issues
+        // Mitigation: Users can set GOOGLE_CLOUD_PROJECT to override
+        ...(hasProjectEnvVar || hasKeyFile
+          ? {}
+          : {
+            projectId: process.env.ANTHROPIC_VERTEX_PROJECT_ID,
+          }),
+      })
 
     const vertexArgs: ConstructorParameters<typeof AnthropicVertex>[0] = {
       ...ARGS,
@@ -303,11 +303,13 @@ export async function getAnthropicClient({
     authToken: isClaudeAISubscriber()
       ? getClaudeAIOAuthTokens()?.accessToken
       : undefined,
-    // Set baseURL from OAuth config when using staging OAuth
-    ...(process.env.USER_TYPE === 'ant' &&
-    isEnvTruthy(process.env.USE_STAGING_OAUTH)
-      ? { baseURL: getOauthConfig().BASE_API_URL }
-      : {}),
+    // Set baseURL from environment variable or OAuth config
+    ...(process.env.ANTHROPIC_BASE_URL
+      ? { baseURL: process.env.ANTHROPIC_BASE_URL }
+      : process.env.USER_TYPE === 'ant' &&
+        isEnvTruthy(process.env.USE_STAGING_OAUTH)
+        ? { baseURL: getOauthConfig().BASE_API_URL }
+        : {}),
     ...ARGS,
     ...(isDebugToStdErr() && { logger: createStderrLogger() }),
   }

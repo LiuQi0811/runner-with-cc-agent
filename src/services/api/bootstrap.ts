@@ -45,8 +45,8 @@ async function fetchBootstrapAPI(): Promise<BootstrapResponse | null> {
     return null
   }
 
-  if (getAPIProvider() !== 'firstParty') {
-    logForDebugging('[Bootstrap] Skipped: 3P provider')
+  if (getAPIProvider() !== 'firstParty' || process.env.ANTHROPIC_BASE_URL) {
+    logForDebugging('[Bootstrap] Skipped: 3P provider or custom base URL')
     return null
   }
 
